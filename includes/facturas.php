@@ -59,7 +59,7 @@ function getFacturas(array $filtros = [], int $pagina = 1, int $porPagina = 20):
     $total = (int)$stmtCount->fetchColumn();
 
     $offset = ($pagina - 1) * $porPagina;
-    $sql = "SELECT f.id, f.fecha, f.nit_proveedor, f.proveedor, f.numero_factura,
+    /*$sql = "SELECT f.id, f.fecha, f.nit_proveedor, f.proveedor, f.numero_factura,
                    f.serie_factura, f.nit_cliente, f.nombre_cliente,
                    f.subtotal, f.iva, f.total, f.moneda,
                    f.cuenta_contable, f.descripcion_cuenta,
@@ -72,7 +72,29 @@ function getFacturas(array $filtros = [], int $pagina = 1, int $porPagina = 20):
             LEFT JOIN usuarios u ON u.telegram_user_id = f.telegram_user_id
             WHERE $whereStr
             ORDER BY f.fecha DESC, f.id DESC
-            LIMIT ? OFFSET ?";
+            LIMIT ? OFFSET ?";*/
+    $sql = "SELECT f.id, f.fecha, f.nit_proveedor, f.proveedor, f.numero_factura,
+               f.serie_factura, f.nit_cliente, f.nombre_cliente,
+               f.subtotal, f.iva, f.total, f.moneda,
+               f.cuenta_contable, f.descripcion_cuenta,
+               f.dimension_1, f.dimension_2, f.dimension_3,
+               f.nombre_responsable, f.telegram_user_id,
+               f.tipo_documento, f.numero_autorizacion,
+               f.url_google_drive, f.departamento, f.municipio,
+               f.created_at, f.fecha_procesamiento,
+               (SELECT COUNT(*) FROM auditoria_facturas a 
+                WHERE a.factura_id = f.id 
+                AND a.accion = 'EXPORTAR') AS veces_exportada,
+               (SELECT MAX(a.created_at) FROM auditoria_facturas a 
+                WHERE a.factura_id = f.id 
+                AND a.accion = 'EXPORTAR') AS ultima_exportacion,
+               u.nombre AS vendedor_nombre
+        FROM facturas_ocr f
+        LEFT JOIN usuarios u ON u.telegram_user_id = f.telegram_user_id
+        WHERE $whereStr
+        ORDER BY f.fecha DESC, f.id DESC
+        LIMIT ? OFFSET ?";
+
 
     $stmtData = $db->prepare($sql);
     $allParams = array_merge($params, [$porPagina, $offset]);

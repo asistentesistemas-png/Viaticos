@@ -4,23 +4,23 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/facturas.php';
 require_once __DIR__ . '/../includes/exportar.php';
-
+ 
 requireAuth();
 $usuario   = usuarioActual();
 $pageTitle = 'Facturas — ' . APP_NAME;
-
+ 
 // ── Exportar ─────────────────────────────────────────────
 if (isset($_GET['exportar'])) {
-    requireRol([ROL_ADMIN, ROL_VENDEDOR, ROL_CONTABILIDAD]);
     exportarExcel([
         'fecha_desde'      => $_GET['fecha_desde']      ?? '',
         'fecha_hasta'      => $_GET['fecha_hasta']      ?? '',
         'proveedor'        => $_GET['proveedor']        ?? '',
         'numero_factura'   => $_GET['numero_factura']   ?? '',
+        'nit_proveedor'    => $_GET['nit_proveedor']    ?? '',
         'telegram_user_id' => $_GET['telegram_user_id'] ?? '',
     ]);
 }
-
+ 
 // ── Filtros ──────────────────────────────────────────────
 $filtros = [
     'fecha_desde'      => $_GET['fecha_desde']      ?? '',
@@ -35,27 +35,45 @@ $resultado = getFacturas($filtros, $pagina, 25);
 $filas     = $resultado['data'];
 $total     = $resultado['total'];
 $totalPags = $resultado['total_paginas'];
-
-// Vendedores para filtro (Admin/Contabilidad)
+ 
 $vendedores = [];
 if ($usuario['rol_id'] !== ROL_VENDEDOR) {
     $vendedores = getVendedores();
 }
-
-// Mensaje flash
+ 
 $msg     = $_SESSION['flash_msg']  ?? '';
 $msgType = $_SESSION['flash_type'] ?? 'info';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
-
-// URL base para paginación con filtros
+ 
 function paginaUrl(int $p, array $f): string {
     $params = array_filter(array_merge($f, ['p' => $p]));
     return '?' . http_build_query($params);
 }
-
+ 
+// ── Obtener datos de la vista ─────────────────────────────
+$db          = getDB();
+$idsFacturas = array_column($filas, 'id');
+$vistaData   = [];
+if (!empty($idsFacturas)) {
+    $placeholders = implode(',', array_fill(0, count($idsFacturas), '?'));
+    $stmtVista = $db->prepare(
+        "SELECT v.*, f.id AS factura_id
+         FROM vista_facturas_viaticos v
+         JOIN facturas_ocr f ON f.serie_factura  = v.serie_factura
+                            AND f.numero_factura = v.numero_factura
+                            AND f.nit_proveedor  = v.nit_proveedor
+                            AND f.fecha          = v.fecha
+         WHERE f.id IN ($placeholders)"
+    );
+    $stmtVista->execute($idsFacturas);
+    foreach ($stmtVista->fetchAll(PDO::FETCH_ASSOC) as $vRow) {
+        $vistaData[$vRow['factura_id']] = $vRow;
+    }
+}
+ 
 include __DIR__ . '/../includes/header.php';
 ?>
-
+ 
 <div class="page-header">
   <h1>Facturas de Viáticos</h1>
   <p>
@@ -66,13 +84,11 @@ include __DIR__ . '/../includes/header.php';
     <?php endif; ?>
   </p>
 </div>
-
+ 
 <?php if ($msg): ?>
-<div class="alert alert-<?= $msgType ?>" data-autodismiss>
-  <?= htmlspecialchars($msg) ?>
-</div>
+<div class="alert alert-<?= $msgType ?>" data-autodismiss><?= htmlspecialchars($msg) ?></div>
 <?php endif; ?>
-
+ 
 <!-- ── Filtros ─────────────────────────────────────────── -->
 <div class="filter-bar">
   <form method="GET" action="">
@@ -118,7 +134,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
   </form>
 </div>
-
+ 
 <!-- ── Tabla ───────────────────────────────────────────── -->
 <div class="table-wrapper">
   <div class="table-toolbar">
@@ -131,7 +147,7 @@ include __DIR__ . '/../includes/header.php';
       </a>
     </div>
   </div>
-
+ 
   <div class="table-scroll">
     <table>
       <thead>
@@ -149,6 +165,7 @@ include __DIR__ . '/../includes/header.php';
           <th>Otros</th>
           <th>Descripción Otros</th>
           <th>Forma de Pago</th>
+          <th>Estado</th>
           <?php if ($usuario['rol_id'] !== ROL_VENDEDOR): ?><th>Vendedor</th><?php endif; ?>
           <th>Acciones</th>
         </tr>
@@ -156,7 +173,7 @@ include __DIR__ . '/../includes/header.php';
       <tbody>
         <?php if (empty($filas)): ?>
         <tr>
-          <td colspan="15">
+          <td colspan="16">
             <div class="empty-state">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
               <p>No se encontraron facturas con los filtros aplicados.</p>
@@ -164,32 +181,9 @@ include __DIR__ . '/../includes/header.php';
           </td>
         </tr>
         <?php else: ?>
-          <?php
-        // Obtener datos de la vista para mostrar combustible, alimentacion, etc.
-        $db = getDB();
-        $idsFacturas = array_column($filas, 'id');
-        $vistaData = [];
-        if (!empty($idsFacturas)) {
-            $placeholders = implode(',', array_fill(0, count($idsFacturas), '?'));
-            $stmtVista = $db->prepare(
-                "SELECT v.*, f.id AS factura_id
-                 FROM vista_facturas_viaticos v
-                 JOIN facturas_ocr f ON f.serie_factura = v.serie_factura 
-                                    AND f.numero_factura = v.numero_factura
-                                    AND f.nit_proveedor = v.nit_proveedor
-                                    AND f.fecha = v.fecha
-                 WHERE f.id IN ($placeholders)"
-            );
-            $stmtVista->execute($idsFacturas);
-            foreach ($stmtVista->fetchAll(PDO::FETCH_ASSOC) as $vRow) {
-                $vistaData[$vRow['factura_id']] = $vRow;
-            }
-        }
-        ?>
         <?php foreach ($filas as $f): ?>
         <?php $v = $vistaData[$f['id']] ?? []; ?>
-        
-       <tr>
+        <tr>
           <td><?= htmlspecialchars($f['fecha'] ?? '—') ?></td>
           <td><?= htmlspecialchars($f['departamento'] ?? '—') ?></td>
           <td><?= htmlspecialchars($f['municipio'] ?? '—') ?></td>
@@ -203,6 +197,16 @@ include __DIR__ . '/../includes/header.php';
           <td class="td-mono text-right">Q <?= number_format($v['otros']        ?? 0, 2) ?></td>
           <td><?= htmlspecialchars($v['descripcion_otros'] ?? '—') ?></td>
           <td><?= htmlspecialchars($v['forma_pago'] ?? '—') ?></td>
+          <td>
+            <?php if (!empty($f['veces_exportada']) && $f['veces_exportada'] > 0): ?>
+              <span class="badge badge-green"
+                    title="Exportado <?= $f['veces_exportada'] ?> vez. Última: <?= $f['ultima_exportacion'] ?>">
+                ✓ Exportado
+              </span>
+            <?php else: ?>
+              <span class="badge badge-gray">Pendiente</span>
+            <?php endif; ?>
+          </td>
           <?php if ($usuario['rol_id'] !== ROL_VENDEDOR): ?>
           <td><?= htmlspecialchars($f['vendedor_nombre'] ?? $f['telegram_user_id'] ?? '—') ?></td>
           <?php endif; ?>
@@ -227,7 +231,7 @@ include __DIR__ . '/../includes/header.php';
       </tbody>
     </table>
   </div>
-
+ 
   <!-- Paginación -->
   <?php if ($totalPags > 1): ?>
   <div class="pagination">
@@ -249,5 +253,5 @@ include __DIR__ . '/../includes/header.php';
   </div>
   <?php endif; ?>
 </div>
-
+ 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

@@ -136,20 +136,20 @@ include __DIR__ . '/../includes/header.php';
     <table>
       <thead>
         <tr>
-          <th>ID</th>
           <th>Fecha</th>
-          <th>Proveedor</th>
-          <th>NIT Prov.</th>
-          <th>N° Factura</th>
+          <th>Departamento</th>
+          <th>Municipio</th>
           <th>Serie</th>
-          <th>Subtotal</th>
-          <th>IVA</th>
-          <th>Total</th>
-          <th>Moneda</th>
+          <th>N° Factura</th>
+          <th>NIT Proveedor</th>
+          <th>Proveedor</th>
+          <th>Combustible</th>
+          <th>Alimentación</th>
+          <th>Hospedaje</th>
+          <th>Otros</th>
+          <th>Descripción Otros</th>
+          <th>Forma de Pago</th>
           <?php if ($usuario['rol_id'] !== ROL_VENDEDOR): ?><th>Vendedor</th><?php endif; ?>
-          <th>Cuenta Contable</th>
-          <th>Dim. 1</th>
-          <th>Dim. 2</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -164,24 +164,48 @@ include __DIR__ . '/../includes/header.php';
           </td>
         </tr>
         <?php else: ?>
+          <?php
+        // Obtener datos de la vista para mostrar combustible, alimentacion, etc.
+        $db = getDB();
+        $idsFacturas = array_column($filas, 'id');
+        $vistaData = [];
+        if (!empty($idsFacturas)) {
+            $placeholders = implode(',', array_fill(0, count($idsFacturas), '?'));
+            $stmtVista = $db->prepare(
+                "SELECT v.*, f.id AS factura_id
+                 FROM vista_facturas_viaticos v
+                 JOIN facturas_ocr f ON f.serie_factura = v.serie_factura 
+                                    AND f.numero_factura = v.numero_factura
+                                    AND f.nit_proveedor = v.nit_proveedor
+                                    AND f.fecha = v.fecha
+                 WHERE f.id IN ($placeholders)"
+            );
+            $stmtVista->execute($idsFacturas);
+            foreach ($stmtVista->fetchAll(PDO::FETCH_ASSOC) as $vRow) {
+                $vistaData[$vRow['factura_id']] = $vRow;
+            }
+        }
+        ?>
         <?php foreach ($filas as $f): ?>
-        <tr>
-          <td class="td-mono" style="color:var(--text-muted)"><?= $f['id'] ?></td>
+        <?php $v = $vistaData[$f['id']] ?? []; ?>
+        
+       <tr>
           <td><?= htmlspecialchars($f['fecha'] ?? '—') ?></td>
-          <td class="td-truncate" title="<?= htmlspecialchars($f['proveedor'] ?? '') ?>"><?= htmlspecialchars($f['proveedor'] ?? '—') ?></td>
-          <td class="td-mono"><?= htmlspecialchars($f['nit_proveedor'] ?? '—') ?></td>
-          <td class="td-mono"><?= htmlspecialchars($f['numero_factura'] ?? '—') ?></td>
+          <td><?= htmlspecialchars($f['departamento'] ?? '—') ?></td>
+          <td><?= htmlspecialchars($f['municipio'] ?? '—') ?></td>
           <td class="td-mono"><?= htmlspecialchars($f['serie_factura'] ?? '—') ?></td>
-          <td class="td-mono text-right">Q <?= number_format($f['subtotal'] ?? 0, 2) ?></td>
-          <td class="td-mono text-right">Q <?= number_format($f['iva'] ?? 0, 2) ?></td>
-          <td class="td-mono text-right"><strong>Q <?= number_format($f['total'] ?? 0, 2) ?></strong></td>
-          <td><span class="badge badge-gray"><?= htmlspecialchars($f['moneda'] ?? 'GTQ') ?></span></td>
+          <td class="td-mono"><?= htmlspecialchars($f['numero_factura'] ?? '—') ?></td>
+          <td class="td-mono"><?= htmlspecialchars($f['nit_proveedor'] ?? '—') ?></td>
+          <td class="td-truncate" title="<?= htmlspecialchars($f['proveedor'] ?? '') ?>"><?= htmlspecialchars($f['proveedor'] ?? '—') ?></td>
+          <td class="td-mono text-right">Q <?= number_format($v['combustible']  ?? 0, 2) ?></td>
+          <td class="td-mono text-right">Q <?= number_format($v['alimentacion'] ?? 0, 2) ?></td>
+          <td class="td-mono text-right">Q <?= number_format($v['hospedaje']    ?? 0, 2) ?></td>
+          <td class="td-mono text-right">Q <?= number_format($v['otros']        ?? 0, 2) ?></td>
+          <td><?= htmlspecialchars($v['descripcion_otros'] ?? '—') ?></td>
+          <td><?= htmlspecialchars($v['forma_pago'] ?? '—') ?></td>
           <?php if ($usuario['rol_id'] !== ROL_VENDEDOR): ?>
           <td><?= htmlspecialchars($f['vendedor_nombre'] ?? $f['telegram_user_id'] ?? '—') ?></td>
           <?php endif; ?>
-          <td class="td-truncate" title="<?= htmlspecialchars($f['cuenta_contable'] ?? '') ?>"><?= htmlspecialchars($f['cuenta_contable'] ?? '—') ?></td>
-          <td><?= htmlspecialchars($f['dimension_1'] ?? '—') ?></td>
-          <td><?= htmlspecialchars($f['dimension_2'] ?? '—') ?></td>
           <td>
             <div style="display:flex;gap:.35rem">
               <a href="<?= BASE_URL ?>/pages/editar_factura.php?id=<?= $f['id'] ?>"
@@ -189,7 +213,7 @@ include __DIR__ . '/../includes/header.php';
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/></svg>
                 Editar
               </a>
-              <?php if ($f['url_google_drive']): ?>
+              <?php if (!empty($f['url_google_drive'])): ?>
               <a href="<?= htmlspecialchars($f['url_google_drive']) ?>" target="_blank"
                  class="btn btn-secondary btn-sm" title="Ver en Drive">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
