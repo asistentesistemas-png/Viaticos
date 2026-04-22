@@ -47,7 +47,7 @@ function exportarExcel(array $filtros = []): void {
     $whereStr = implode(' AND ', $where);
  
     // ── Consultar vista ──────────────────────────────────
-    /*$sql = "SELECT
+    $sql = "SELECT
                 v.fecha,
                 v.departamento,
                 v.municipio,
@@ -63,32 +63,7 @@ function exportarExcel(array $filtros = []): void {
                 v.forma_pago
             FROM vista_facturas_viaticos v
             WHERE $whereStr
-            ORDER BY v.fecha DESC";*/
-            // ── Consultar vista ──────────────────────────────────
-$sql = "SELECT
-            f.id,
-            v.fecha,
-            v.departamento,
-            v.municipio,
-            v.serie_factura,
-            v.numero_factura,
-            v.nit_proveedor,
-            v.proveedor,
-            v.combustible,
-            v.alimentacion,
-            v.hospedaje,
-            v.otros,
-            v.descripcion_otros,
-            v.forma_pago
-        FROM vista_facturas_viaticos v
-        JOIN facturas_ocr f ON f.serie_factura  = v.serie_factura
-                           AND f.numero_factura = v.numero_factura
-                           AND f.nit_proveedor  = v.nit_proveedor
-                           AND f.fecha          = v.fecha
-        WHERE $whereStr
-        ORDER BY v.fecha DESC";
-
-$stmt = $db->prepare($sql);
+            ORDER BY v.fecha DESC";
  
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
