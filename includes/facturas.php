@@ -148,6 +148,7 @@ function getFacturaById(int $id): ?array {
                 f.created_at,
                 f.tipo_documento,
                 f.numero_autorizacion,
+                f.forma_pago,
                 u.nombre AS vendedor_nombre
             FROM facturas_ocr f
             LEFT JOIN usuarios u 

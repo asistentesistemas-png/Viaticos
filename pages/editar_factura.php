@@ -72,6 +72,19 @@ function campoForm(string $campo, $valor, string $label, string $tipo = 'text', 
         $inp = "<select id=\"f_municipio\" name=\"$campo\">
                   <option value=''>-- Seleccionar departamento primero --</option>
                 </select>";
+                } elseif ($tipo === 'select_pago') {
+    $opciones = [
+        'Tarjeta de Crédito',
+        'Efectivo',
+        'Transferencia Bancaria',
+        'Tarjeta de Débito',
+    ];
+    $opts = "<option value=''>-- Seleccionar --</option>";
+    foreach ($opciones as $op) {
+        $sel   = ($val === $op) ? 'selected' : '';
+        $opts .= "<option value=\"" . htmlspecialchars($op) . "\" $sel>" . htmlspecialchars($op) . "</option>";
+    }
+    $inp = "<select id=\"$fid\" name=\"$campo\">$opts</select>";
                 } elseif ($tipo === 'select_otros') {
     $opciones = [
         '',
@@ -177,6 +190,7 @@ include __DIR__ . '/../includes/header.php';
           <?php // <?= campoForm('dimension_2',        $factura['dimension_2'],        'Dimensión 2') ?>
           <?php //<?= campoForm('dimension_3',        $factura['dimension_3'],        'Dimensión 3') ?>
           <?php //<?= campoForm('nombre_responsable', $factura['nombre_responsable'], 'Responsable') ?>
+          <?= campoForm('forma_pago', $factura['forma_pago'] ?? 'Tarjeta de Crédito', 'Forma de Pago', 'select_pago') ?>
           
         </div>
 
@@ -186,6 +200,7 @@ include __DIR__ . '/../includes/header.php';
          <?php // <?= campoForm('items_texto',      $factura['items_texto'],      'Descripción', 'textarea', true) ?>
           <?php //<?= campoForm('texto_manuscrito', $factura['texto_manuscrito'], 'Texto Manuscrito',    'textarea', true) ?>
           <?= campoForm('descripcion_otros', $factura['descripcion_otros'] ?? '', 'Descripción Otros', 'select_otros', true) ?>
+           
         </div>
 
         <div style="display:flex;gap:.75rem;margin-top:1.5rem;justify-content:flex-end">

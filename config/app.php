@@ -40,6 +40,7 @@ define('CAMPOS_FACTURA', [
     'departamento'       => ['label' => 'Departamento',  'tipo' => 'text'],
     'municipio'          => ['label' => 'Municipio',      'tipo' => 'text'],
     'descripcion_otros' => ['label' => 'Descripción Otros', 'tipo' => 'text'],
+    'forma_pago' => ['label' => 'Forma de Pago', 'tipo' => 'text'],
 
 ]);
 
