@@ -4,11 +4,11 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/facturas.php';
 require_once __DIR__ . '/../includes/exportar.php';
- 
+
 requireAuth();
 $usuario   = usuarioActual();
 $pageTitle = 'Facturas — ' . APP_NAME;
- 
+
 // ── Exportar ─────────────────────────────────────────────
 if (isset($_GET['exportar'])) {
     exportarExcel([
@@ -20,7 +20,7 @@ if (isset($_GET['exportar'])) {
         'telegram_user_id' => $_GET['telegram_user_id'] ?? '',
     ]);
 }
- 
+
 // ── Filtros ──────────────────────────────────────────────
 $filtros = [
     'fecha_desde'      => $_GET['fecha_desde']      ?? '',
@@ -35,21 +35,22 @@ $resultado = getFacturas($filtros, $pagina, 25);
 $filas     = $resultado['data'];
 $total     = $resultado['total'];
 $totalPags = $resultado['total_paginas'];
- 
+
 $vendedores = [];
 if ($usuario['rol_id'] !== ROL_VENDEDOR) {
     $vendedores = getVendedores();
 }
- 
+
+// ── Flash message — DEBE ir después de requireAuth() ─────
 $msg     = $_SESSION['flash_msg']  ?? '';
 $msgType = $_SESSION['flash_type'] ?? 'info';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
- 
+
 function paginaUrl(int $p, array $f): string {
     $params = array_filter(array_merge($f, ['p' => $p]));
     return '?' . http_build_query($params);
 }
- 
+
 // ── Obtener datos de la vista ─────────────────────────────
 $db          = getDB();
 $idsFacturas = array_column($filas, 'id');
@@ -70,10 +71,10 @@ if (!empty($idsFacturas)) {
         $vistaData[$vRow['factura_id']] = $vRow;
     }
 }
- 
+
 include __DIR__ . '/../includes/header.php';
 ?>
- 
+
 <div class="page-header">
   <h1>Facturas de Viáticos</h1>
   <p>
@@ -84,11 +85,11 @@ include __DIR__ . '/../includes/header.php';
     <?php endif; ?>
   </p>
 </div>
- 
+
 <?php if ($msg): ?>
 <div class="alert alert-<?= $msgType ?>" data-autodismiss><?= htmlspecialchars($msg) ?></div>
 <?php endif; ?>
- 
+
 <!-- ── Filtros ─────────────────────────────────────────── -->
 <div class="filter-bar">
   <form method="GET" action="">
@@ -134,12 +135,16 @@ include __DIR__ . '/../includes/header.php';
     </div>
   </form>
 </div>
- 
+
 <!-- ── Tabla ───────────────────────────────────────────── -->
 <div class="table-wrapper">
   <div class="table-toolbar">
     <span class="table-title"><?= number_format($total) ?> factura<?= $total !== 1 ? 's' : '' ?> encontrada<?= $total !== 1 ? 's' : '' ?></span>
     <div class="table-actions">
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-nueva-factura')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nueva Factura
+      </button>
       <a href="<?= BASE_URL ?>/pages/facturas.php?<?= http_build_query(array_filter($filtros)) ?>&exportar=1"
          class="btn btn-success btn-sm">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -147,7 +152,7 @@ include __DIR__ . '/../includes/header.php';
       </a>
     </div>
   </div>
- 
+
   <div class="table-scroll">
     <table>
       <thead>
@@ -231,7 +236,7 @@ include __DIR__ . '/../includes/header.php';
       </tbody>
     </table>
   </div>
- 
+
   <!-- Paginación -->
   <?php if ($totalPags > 1): ?>
   <div class="pagination">
@@ -253,5 +258,144 @@ include __DIR__ . '/../includes/header.php';
   </div>
   <?php endif; ?>
 </div>
- 
+
+<!-- ── Modal Nueva Factura ──────────────────────────── -->
+<div class="modal-overlay" id="modal-nueva-factura">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <h2>Nueva Factura</h2>
+      <button class="modal-close" onclick="closeModal('modal-nueva-factura')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form id="form-nueva-factura" method="POST" action="<?= BASE_URL ?>/pages/nueva_factura.php">
+      <div class="modal-body">
+        <div class="edit-grid">
+          <div class="form-group">
+            <label>Fecha *</label>
+            <input type="date" name="fecha" required value="<?= date('Y-m-d') ?>">
+          </div>
+          <div class="form-group">
+            <label>N° Factura</label>
+            <input type="text" name="numero_factura" placeholder="Ej. 00123">
+          </div>
+          <div class="form-group">
+            <label>Serie</label>
+            <input type="text" name="serie_factura" placeholder="Ej. A">
+          </div>
+          <div class="form-group">
+            <label>NIT Proveedor</label>
+            <input type="text" name="nit_proveedor" placeholder="NIT">
+          </div>
+          <div class="form-group span-2">
+            <label>Proveedor *</label>
+            <input type="text" name="proveedor" required placeholder="Nombre del proveedor">
+          </div>
+          <div class="form-group">
+            <label>Total *</label>
+            <input type="number" name="total" id="nueva-total" step="0.01"
+                   placeholder="0.00" oninput="calcDesdeTotal()" required>
+          </div>
+          <div class="form-group">
+            <label>Subtotal (auto)</label>
+            <input type="number" name="subtotal" id="nueva-subtotal" step="0.01"
+                   placeholder="0.00" style="background:var(--bg-alt)" readonly>
+          </div>
+          <div class="form-group">
+            <label>IVA 12% (auto)</label>
+            <input type="number" name="iva" id="nueva-iva" step="0.01"
+                   placeholder="0.00" style="background:var(--bg-alt)" readonly>
+          </div>
+          <div class="form-group">
+            <label>Moneda</label>
+            <select name="moneda">
+              <option value="GTQ">GTQ</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Departamento</label>
+            <select name="departamento" id="nueva-depto" onchange="actualizarMunicipiosNueva(this.value)">
+              <option value="">-- Seleccionar --</option>
+              <?php foreach (array_keys(DEPARTAMENTOS_MUNICIPIOS) as $d): ?>
+              <option value="<?= htmlspecialchars($d) ?>"><?= htmlspecialchars($d) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Municipio</label>
+            <select name="municipio" id="nueva-municipio">
+              <option value="">-- Seleccionar departamento --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tipo de Gasto</label>
+            <select name="texto_manuscrito">
+              <option value="">-- Seleccionar --</option>
+              <option value="comb">Combustible</option>
+              <option value="alim">Alimentación</option>
+              <option value="hosp">Hospedaje</option>
+              <option value="">Otros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Descripción Otros</label>
+            <select name="descripcion_otros">
+              <option value="">-- Seleccionar --</option>
+              <option value="Peajes o Ferri">Peajes o Ferri</option>
+              <option value="Parqueos">Parqueos</option>
+              <option value="Mant. Vehículos">Mant. Vehículos</option>
+              <option value="Recargos TC">Recargos TC</option>
+              <option value="Otros">Otros</option>
+              <option value="Atención a Clientes">Atención a Clientes</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Forma de Pago</label>
+            <select name="forma_pago">
+              <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+              <option value="Tarjeta de Débito">Tarjeta de Débito</option>
+            </select>
+          </div>
+          <div class="form-group span-2">
+            <label>Descripción / Items</label>
+            <textarea name="items_texto" rows="3" placeholder="Descripción de los items..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-nueva-factura')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar Factura</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const deptosMunicipios = <?= json_encode(DEPARTAMENTOS_MUNICIPIOS) ?>;
+
+function calcDesdeTotal() {
+    const total    = parseFloat(document.getElementById('nueva-total').value) || 0;
+    const iva      = Math.round((total * 12 / 112) * 100) / 100;
+    const subtotal = Math.round((total - iva) * 100) / 100;
+    document.getElementById('nueva-subtotal').value = subtotal.toFixed(2);
+    document.getElementById('nueva-iva').value      = iva.toFixed(2);
+}
+
+function actualizarMunicipiosNueva(depto) {
+    const sel = document.getElementById('nueva-municipio');
+    sel.innerHTML = '<option value="">-- Seleccionar --</option>';
+    if (!depto || !deptosMunicipios[depto]) return;
+    deptosMunicipios[depto].forEach(m => {
+        const opt       = document.createElement('option');
+        opt.value       = m;
+        opt.textContent = m;
+        sel.appendChild(opt);
+    });
+}
+</script>
+
 <?php include __DIR__ . '/../includes/footer.php'; ?>

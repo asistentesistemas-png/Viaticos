@@ -263,7 +263,7 @@ tbody tr:hover td { background: var(--blue-pale); }
 .modal {
   background: var(--surface); border-radius: var(--radius-lg);
   border: 1px solid var(--border); box-shadow: var(--shadow);
-  width: 100%; max-width: 700px; max-height: 90vh;
+  width: 100%; max-width: 700px; max-height: 85vh;
   display: flex; flex-direction: column;
   transform: translateY(8px); transition: transform .2s;
 }
@@ -280,7 +280,7 @@ tbody tr:hover td { background: var(--blue-pale); }
   cursor: pointer; color: var(--text-muted); transition: background .15s;
 }
 .modal-close:hover { background: var(--bg-alt); }
-.modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+.modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; max-height: 55vh; }
 .modal-footer {
   padding: 1rem 1.5rem; border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: .6rem;
