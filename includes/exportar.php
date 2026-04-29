@@ -47,24 +47,7 @@ function exportarExcel(array $filtros = []): void {
     $whereStr = implode(' AND ', $where);
  
     // ── Consultar vista ──────────────────────────────────
-    /*$sql = "SELECT
-                v.fecha,
-                v.departamento,
-                v.municipio,
-                v.serie_factura,
-                v.numero_factura,
-                v.nit_proveedor,
-                v.proveedor,
-                v.combustible,
-                v.alimentacion,
-                v.hospedaje,
-                v.otros,
-                v.descripcion_otros,
-                v.forma_pago
-            FROM vista_facturas_viaticos v
-            WHERE $whereStr
-            ORDER BY v.fecha DESC";*/
-            // ── Consultar vista ──────────────────────────────────
+    
 $sql = "SELECT
             f.id,
             v.fecha,
@@ -79,7 +62,8 @@ $sql = "SELECT
             v.hospedaje,
             v.otros,
             v.descripcion_otros,
-            v.forma_pago
+            v.forma_pago,
+            v.observaciones
         FROM vista_facturas_viaticos v
         JOIN facturas_ocr f ON f.serie_factura  = v.serie_factura
                            AND f.numero_factura = v.numero_factura
@@ -88,11 +72,12 @@ $sql = "SELECT
         WHERE $whereStr
         ORDER BY v.fecha DESC";
 
-$stmt = $db->prepare($sql);
+
  
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
     $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
  
     // ── Registrar auditoría ──────────────────────────────
     $ip  = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -165,6 +150,7 @@ function exportarXLSX(array $filas, string $filename): void {
         'K' => 'Otros',
         'L' => 'Descripción Otros',
         'M' => 'Forma de Pago',
+        'N' => 'Observaciones',
     ];
  
     foreach ($encabezados as $col => $titulo) {
@@ -172,7 +158,7 @@ function exportarXLSX(array $filas, string $filename): void {
     }
  
     // Aplicar estilo a encabezados
-    $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
+    $sheet->getStyle('A1:N1')->applyFromArray($headerStyle);
     $sheet->getRowDimension(1)->setRowHeight(22);
  
     // ── Datos ────────────────────────────────────────────
@@ -191,10 +177,11 @@ function exportarXLSX(array $filas, string $filename): void {
         $sheet->setCellValue('K' . $row, $f['otros']            ?? 0);
         $sheet->setCellValue('L' . $row, $f['descripcion_otros']?? '');
         $sheet->setCellValue('M' . $row, $f['forma_pago']       ?? '');
+        $sheet->setCellValue('N' . $row, $f['observaciones'] ?? '');
  
         // Filas alternadas
         if ($row % 2 === 0) {
-            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()
+            $sheet->getStyle('A' . $row . ':N' . $row)->getFill()
                   ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                   ->getStartColor()->setRGB('F8FAFC');
         }
@@ -212,7 +199,7 @@ function exportarXLSX(array $filas, string $filename): void {
     $anchos = [
         'A' => 14, 'B' => 18, 'C' => 20, 'D' => 12,
         'E' => 16, 'F' => 14, 'G' => 35, 'H' => 14,
-        'I' => 14, 'J' => 14, 'K' => 14, 'L' => 25, 'M' => 16,
+        'I' => 14, 'J' => 14, 'K' => 14, 'L' => 25, 'M' => 16, 'N' => 30,
     ];
     foreach ($anchos as $col => $ancho) {
         $sheet->getColumnDimension($col)->setWidth($ancho);
@@ -242,7 +229,7 @@ function exportarXLSX(array $filas, string $filename): void {
     $sheet->freezePane('A2');
  
     // ── Autofilter ───────────────────────────────────────
-    $sheet->setAutoFilter('A1:M1');
+    $sheet->setAutoFilter('A1:N1');
  
     // ── Output ───────────────────────────────────────────
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -266,6 +253,7 @@ function exportarCSV(array $filas, string $filename): void {
         'Fecha', 'Departamento', 'Municipio', 'Serie', 'N° Factura',
         'NIT Proveedor', 'Proveedor', 'Combustible', 'Alimentación',
         'Hospedaje', 'Otros', 'Descripción Otros', 'Forma de Pago',
+        'Observaciones', 
     ]);
  
     foreach ($filas as $f) {
@@ -283,6 +271,7 @@ function exportarCSV(array $filas, string $filename): void {
             $f['otros']             ?? 0,
             $f['descripcion_otros'] ?? '',
             $f['forma_pago']        ?? '',
+             $f['observaciones']     ?? '',
         ]);
     }
     fclose($out);

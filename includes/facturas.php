@@ -59,20 +59,7 @@ function getFacturas(array $filtros = [], int $pagina = 1, int $porPagina = 20):
     $total = (int)$stmtCount->fetchColumn();
 
     $offset = ($pagina - 1) * $porPagina;
-    /*$sql = "SELECT f.id, f.fecha, f.nit_proveedor, f.proveedor, f.numero_factura,
-                   f.serie_factura, f.nit_cliente, f.nombre_cliente,
-                   f.subtotal, f.iva, f.total, f.moneda,
-                   f.cuenta_contable, f.descripcion_cuenta,
-                   f.dimension_1, f.dimension_2, f.dimension_3,
-                   f.nombre_responsable, f.telegram_user_id,
-                   f.tipo_documento, f.numero_autorizacion,f.url_google_drive,f.departamento,f.municipio,
-                   f.created_at, f.fecha_procesamiento,
-                   u.nombre AS vendedor_nombre
-            FROM facturas_ocr f
-            LEFT JOIN usuarios u ON u.telegram_user_id = f.telegram_user_id
-            WHERE $whereStr
-            ORDER BY f.fecha DESC, f.id DESC
-            LIMIT ? OFFSET ?";*/
+    
     $sql = "SELECT f.id, f.fecha, f.nit_proveedor, f.proveedor, f.numero_factura,
                f.serie_factura, f.nit_cliente, f.nombre_cliente,
                f.subtotal, f.iva, f.total, f.moneda,
@@ -81,7 +68,7 @@ function getFacturas(array $filtros = [], int $pagina = 1, int $porPagina = 20):
                f.nombre_responsable, f.telegram_user_id,
                f.tipo_documento, f.numero_autorizacion,
                f.url_google_drive, f.departamento, f.municipio,
-               f.created_at, f.fecha_procesamiento,
+               f.created_at, f.fecha_procesamiento,f.observaciones,
                (SELECT COUNT(*) FROM auditoria_facturas a 
                 WHERE a.factura_id = f.id 
                 AND a.accion = 'EXPORTAR') AS veces_exportada,
@@ -100,6 +87,7 @@ function getFacturas(array $filtros = [], int $pagina = 1, int $porPagina = 20):
     $allParams = array_merge($params, [$porPagina, $offset]);
     $stmtData->execute($allParams);
     $filas = $stmtData->fetchAll();
+    
 
     return [
         'data'        => $filas,
@@ -149,6 +137,7 @@ function getFacturaById(int $id): ?array {
                 f.tipo_documento,
                 f.numero_autorizacion,
                 f.forma_pago,
+                f.observaciones,
                 u.nombre AS vendedor_nombre
             FROM facturas_ocr f
             LEFT JOIN usuarios u 
@@ -240,11 +229,7 @@ function actualizarFactura(int $id, array $datos): array {
 
         $db->commit();
         return ['ok' => true, 'msg' => 'Factura actualizada correctamente.'];
-    /*} catch (PDOException $e) {
-        $db->rollBack();
-        error_log('actualizarFactura error: ' . $e->getMessage());
-        return ['ok' => false, 'msg' => 'Error al guardar. Intenta de nuevo.'];
-    }*/
+    
         } catch (PDOException $e) {
     $db->rollBack();
     return ['ok' => false, 'msg' => 'Error: ' . $e->getMessage()];

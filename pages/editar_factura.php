@@ -200,6 +200,7 @@ include __DIR__ . '/../includes/header.php';
          <?php // <?= campoForm('items_texto',      $factura['items_texto'],      'Descripción', 'textarea', true) ?>
           <?php //<?= campoForm('texto_manuscrito', $factura['texto_manuscrito'], 'Texto Manuscrito',    'textarea', true) ?>
           <?= campoForm('descripcion_otros', $factura['descripcion_otros'] ?? '', 'Descripción Otros', 'select_otros', true) ?>
+          <?= campoForm('observaciones', $factura['observaciones'] ?? '', 'Descripción / Observaciones', 'textarea', true) ?>
            
         </div>
 
